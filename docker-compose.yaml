@@ -1,14 +1,23 @@
+# nginx proxy address - http://172.17.0.1:59022
+
 name: corecontrol
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
 services:
-  web:
+  app:
     image: haedlessdev/corecontrol:latest
-    container_name: corecontrol-web
-    hostname: corecontrol-web
+    container_name: corecontrol-app
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
     restart: always
     pull_policy: always
+    logging: *default-logging
     environment:
-      JWT_SECRET: dOxZYTTZgXKMHkqLBIQVImayQXAVWdzGBPuFJKggzcgvgPJPXpWzqzKaUOIOGGIr
-      DATABASE_URL: postgresql://corecontrol:corecontrol@corecontrol-db:5432/corecontrol
+      - JWT_SECRET=dOxZYTTZgXKMHkqLBIQVImayQXAVWdzGBPuFJKggzcgvgPJPXpWzqzKaUOIOGGIr
+      - DATABASE_URL=postgresql://postgres:gjl9T6iYupxTNgxLLubCKcztMdpsdSj5@corecontrol-db:5432/corecontrol
     ports:
       - '127.0.0.1:59022:3000'
     healthcheck:
@@ -18,8 +27,10 @@ services:
       retries: 3
       start_period: 90s
     depends_on:
-      - db
-      - agent
+      db:
+        condition: service_healthy
+      agent:
+        condition: service_started
     networks:
       - corecontrol
 
@@ -29,10 +40,12 @@ services:
     hostname: corecontrol-agent
     restart: always
     pull_policy: always
+    logging: *default-logging
     environment:
-      DATABASE_URL: postgresql://corecontrol:corecontrol@corecontrol-db:5432/corecontrol
+      - DATABASE_URL=postgresql://postgres:gjl9T6iYupxTNgxLLubCKcztMdpsdSj5@corecontrol-db:5432/corecontrol
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - corecontrol
 
@@ -42,17 +55,15 @@ services:
     hostname: corecontrol-db
     restart: always
     pull_policy: always
-    security_opt:
-      - no-new-privileges:true
+    logging: *default-logging
     environment:
-      POSTGRES_DB: corecontrol
-      POSTGRES_USER: corecontrol
-      POSTGRES_PASSWORD: corecontrol
+      - POSTGRES_DB=corecontrol
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=gjl9T6iYupxTNgxLLubCKcztMdpsdSj5
     volumes:
-      - /var/lib/srv/$USER/docker/haedlessdev/corecontrol/latest/rootf/data/db/postgres:/var/lib/postgresql/data:rw
+      - /var/lib/srv/$USER/docker/db/postgres/corecontrol:/var/lib/postgresql/data:rw
     healthcheck:
-      test:
-        ['CMD', 'pg_isready', '-q', '-d', 'corecontrol', '-U', 'corecontrol']
+      test: ['CMD', 'pg_isready', '-q', '-U', 'postgres', '-d', 'corecontrol']
       timeout: 45s
       interval: 10s
       retries: 10
