@@ -61,7 +61,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=gjl9T6iYupxTNgxLLubCKcztMdpsdSj5
     volumes:
-      - /var/lib/srv/$USER/docker/db/postgres/corecontrol:/var/lib/postgresql/data:rw
+      - '/var/lib/srv/$USER/databases/postgres/corecontrol:/var/lib/postgresql/data:rw'
     healthcheck:
       test: ['CMD', 'pg_isready', '-q', '-U', 'postgres', '-d', 'corecontrol']
       timeout: 45s
