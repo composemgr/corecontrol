@@ -1,0 +1,76 @@
+# nginx proxy address - http://172.17.0.1:59022
+
+name: corecontrol
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: haedlessdev/corecontrol:latest
+    container_name: corecontrol-app
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      - JWT_SECRET=dOxZYTTZgXKMHkqLBIQVImayQXAVWdzGBPuFJKggzcgvgPJPXpWzqzKaUOIOGGIr
+      - DATABASE_URL=postgresql://postgres:gjl9T6iYupxTNgxLLubCKcztMdpsdSj5@corecontrol-db:5432/corecontrol
+    ports:
+      - '127.0.0.1:59022:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 3000 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    depends_on:
+      db:
+        condition: service_healthy
+      agent:
+        condition: service_started
+    networks:
+      - corecontrol
+
+  agent:
+    image: haedlessdev/corecontrol-agent:latest
+    container_name: corecontrol-agent
+    hostname: corecontrol-agent
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      - DATABASE_URL=postgresql://postgres:gjl9T6iYupxTNgxLLubCKcztMdpsdSj5@corecontrol-db:5432/corecontrol
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - corecontrol
+
+  db:
+    image: postgres:17
+    container_name: corecontrol-db
+    hostname: corecontrol-db
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      - POSTGRES_DB=corecontrol
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=gjl9T6iYupxTNgxLLubCKcztMdpsdSj5
+    volumes:
+      - './rootfs/db/postgres:/var/lib/postgresql/data:rw'
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-q', '-U', 'postgres', '-d', 'corecontrol']
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    networks:
+      - corecontrol
+
+networks:
+  corecontrol:
+    name: corecontrol
+    external: false
