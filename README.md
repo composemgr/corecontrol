@@ -53,7 +53,7 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/db/postgres/corecontrol` - Data storage
+- `./volumes/data/db/postgres/corecontrol` - Data storage
 
 ## 🔐 Security
 
