@@ -17,8 +17,8 @@ services:
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
-      JWT_SECRET: ${APP_JWT_TOKEN:-changeme_jwt_secret_min_64_chars}
-      DATABASE_URL: postgresql://postgres:${DB_ADMIN_PASS:-gjl9T6iYupxTNgxLLubCKcztMdpsdSj5}@corecontrol-db:5432/corecontrol
+      JWT_SECRET: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      DATABASE_URL: postgresql://${DB_ADMIN_NAME:-postgres}:${DB_ADMIN_PASS:-changeme_admin_password}@corecontrol-db:5432/${DB_CREATE_DATABASE_NAME:-corecontrol}
     ports:
       - '172.17.0.1:59022:3000'
     healthcheck:
@@ -44,7 +44,7 @@ services:
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
-      DATABASE_URL: postgresql://postgres:${DB_ADMIN_PASS:-gjl9T6iYupxTNgxLLubCKcztMdpsdSj5}@corecontrol-db:5432/corecontrol
+      DATABASE_URL: postgresql://${DB_ADMIN_NAME:-postgres}:${DB_ADMIN_PASS:-changeme_admin_password}@corecontrol-db:5432/${DB_CREATE_DATABASE_NAME:-corecontrol}
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +52,7 @@ services:
       - corecontrol
 
   db:
-    image: postgres:17
+    image: postgres:latest
     container_name: corecontrol-db
     hostname: corecontrol-db
     restart: always
@@ -62,7 +62,7 @@ services:
       TZ: ${TZ:-America/New_York}
       POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-corecontrol}
       POSTGRES_USER: ${DB_ADMIN_NAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_ADMIN_PASS:-gjl9T6iYupxTNgxLLubCKcztMdpsdSj5}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
     volumes:
       - './volumes/data/db/postgres/corecontrol:/var/lib/postgresql/data:rw'
     healthcheck:
