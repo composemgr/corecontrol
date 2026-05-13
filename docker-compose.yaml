@@ -19,6 +19,8 @@ services:
       TZ: ${TZ:-America/New_York}
       JWT_SECRET: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       DATABASE_URL: postgresql://${DB_ADMIN_NAME:-postgres}:${DB_ADMIN_PASS:-changeme_admin_password}@corecontrol-db:5432/${DB_CREATE_DATABASE_NAME:-corecontrol}
+      CONTAINER_NAME: corecontrol-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     ports:
       - '172.17.0.1:59022:3000'
     healthcheck:
@@ -34,6 +36,24 @@ services:
         condition: service_started
     networks:
       - corecontrol
+      - proxy
+      - cloudflare
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://corecontrol-app:3000'
+      - 'cloudflare.hostname=corecontrol.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.corecontrol-app.entrypoints=http'
+      - 'traefik.http.routers.corecontrol-app-secure.tls=true'
+      - 'traefik.http.routers.corecontrol-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.corecontrol-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.corecontrol-app.middlewares=corecontrol-app-https-redirect'
+      - 'traefik.http.routers.corecontrol-app-secure.entrypoints=https'
+      - 'traefik.http.routers.corecontrol-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.corecontrol-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.corecontrol-app-secure.service=corecontrol-app'
+      - 'traefik.http.services.corecontrol-app.loadbalancer.server.port=3000'
 
   agent:
     image: haedlessdev/corecontrol-agent:latest
@@ -45,6 +65,7 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
       DATABASE_URL: postgresql://${DB_ADMIN_NAME:-postgres}:${DB_ADMIN_PASS:-changeme_admin_password}@corecontrol-db:5432/${DB_CREATE_DATABASE_NAME:-corecontrol}
+      CONTAINER_NAME: corecontrol-agent
     depends_on:
       db:
         condition: service_healthy
@@ -63,6 +84,7 @@ services:
       POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-corecontrol}
       POSTGRES_USER: ${DB_ADMIN_NAME:-postgres}
       POSTGRES_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      CONTAINER_NAME: corecontrol-db
     volumes:
       - './volumes/data/db/postgres/corecontrol:/var/lib/postgresql/data:rw'
     healthcheck:
@@ -77,3 +99,7 @@ networks:
   corecontrol:
     name: corecontrol
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
