@@ -1,19 +1,15 @@
 ## 👋 Welcome to corecontrol 🚀
 
-Server management and monitoring dashboard
+Dashboard for managing and observing self-hosted services
 
 ## 📋 Description
 
-Server management and monitoring dashboard
+Dashboard for managing and observing self-hosted services
 
 ## 🚀 Services
 
 - **app**: haedlessdev/corecontrol:latest
 - **agent**: haedlessdev/corecontrol-agent:latest
-
-### Infrastructure Components
-
-- **db**: Postgres database
 
 
 ## 📦 Installation
@@ -27,7 +23,8 @@ curl -q -LSsf "https://raw.githubusercontent.com/composemgr/corecontrol/main/doc
 ```bash
 git clone "https://github.com/composemgr/corecontrol" ~/.local/srv/docker/corecontrol
 cd ~/.local/srv/docker/corecontrol
-docker compose up -d
+cp default.env .env
+docker compose --env-file .env up -d
 ```
 
 ### Option 3: Using composemgr
@@ -41,19 +38,55 @@ composemgr install corecontrol
 
 ```shell
 TZ=America/New_York
-APP_JWT_TOKEN=changeme_jwt_secret_min_64_chars
-DB_ADMIN_PASS=gjl9T6iYupxTNgxLLubCKcztMdpsdSj5
+BASE_HOST_NAME=corecontrol.example.com
+BASE_DOMAIN_NAME=example.com
+APP_SECRET_KEY=replace-with-a-random-password
+APP_ADMIN_USER=admin
+APP_ADMIN_PASS=replace-with-a-random-password
 ```
 
 See `docker-compose.yaml` for complete list of configurable options.
 
+### Environment Files
+
+`default.env.sample` holds the full set of variables and is copied to `.env`
+before starting the stack:
+
+```bash
+cp default.env .env
+docker compose --env-file .env up -d
+```
+
+`app.env.sample` holds the app-specific overrides and is copied to `app.env`:
+
+```bash
+cp app.env.sample app.env
+```
+
+`composemgr up` applies `app.env` and `default.env` automatically. Raw
+`docker compose` commands need `--env-file .env` to pick up the same values.
+
+### Reverse Proxy
+
+Three standalone compose files ship in this repo:
+
+| File | Use |
+|------|-----|
+| `docker-compose.yaml` | Default, published on `172.17.0.1:64144` |
+| `docker-compose.traefik.yaml` | Behind an existing external `traefik` network |
+| `docker-compose.tunnel.yaml` | Behind an existing external `cloudflare` tunnel network |
+
+```bash
+docker compose -f docker-compose.traefik.yaml --env-file .env up -d
+```
+
 ## 🌐 Access
 
-- **Web Interface**: http://172.17.0.1:59022
+- **Web Interface**: http://172.17.0.1:64144
 
 ## 📂 Volumes
 
-- `./volumes/data/db/postgres/corecontrol` - Data storage
+- `./volumes/data/corecontrol` - Application data
 
 ## 🔐 Security
 
@@ -66,26 +99,26 @@ See `docker-compose.yaml` for complete list of configurable options.
 ## 🔍 Logging
 
 ```shell
-docker compose logs -f app
+docker compose --env-file .env logs -f app
 ```
 
 ## 🛠️ Management
 
 ```bash
 # Start services
-docker compose up -d
+docker compose --env-file .env up -d
 
 # Stop services
-docker compose down
+docker compose --env-file .env down
 
 # Update to latest images
-docker compose pull && docker compose up -d
+docker compose --env-file .env pull && docker compose --env-file .env up -d
 
 # View logs
-docker compose logs -f
+docker compose --env-file .env logs -f
 
 # Restart services
-docker compose restart
+docker compose --env-file .env restart
 ```
 
 ## 📋 Requirements

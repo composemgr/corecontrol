@@ -1,0 +1,63 @@
+name: corecontrol
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: haedlessdev/corecontrol:latest
+    container_name: corecontrol-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      PORT: 3000
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-replace-with-a-random-32-byte-hex-string}
+      ADMIN_USERNAME: ${APP_ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${APP_ADMIN_PASS:-replace-with-a-random-password}
+      CONTAINER_NAME: corecontrol-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+    volumes:
+      - './volumes/data/corecontrol:/app/data'
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.corecontrol-app.entrypoints=http'
+      - 'traefik.http.routers.corecontrol-app.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`'
+      - 'traefik.http.routers.corecontrol-app.middlewares=corecontrol-app-https-redirect'
+      - 'traefik.http.middlewares.corecontrol-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.corecontrol-app-secure.entrypoints=https'
+      - 'traefik.http.routers.corecontrol-app-secure.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`'
+      - 'traefik.http.routers.corecontrol-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.corecontrol-app-secure.service=corecontrol-app'
+      - 'traefik.http.services.corecontrol-app.loadbalancer.server.port=3000'
+    networks:
+      - corecontrol
+      - traefik
+
+  agent:
+    image: haedlessdev/corecontrol-agent:latest
+    container_name: corecontrol-agent
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: corecontrol-agent
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CORECONTROL_URL: http://corecontrol-app:3000
+      CONTAINER_NAME: corecontrol-agent
+    networks:
+      - corecontrol
+
+networks:
+  corecontrol:
+    name: corecontrol
+    external: false
+  traefik:
+    external: true

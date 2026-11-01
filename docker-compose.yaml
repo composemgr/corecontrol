@@ -1,4 +1,4 @@
-# nginx proxy address - http://172.17.0.1:59022
+# nginx proxy address - http://172.17.0.1:64144
 
 name: corecontrol
 x-logging: &default-logging
@@ -11,87 +11,38 @@ services:
   app:
     image: haedlessdev/corecontrol:latest
     container_name: corecontrol-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
     hostname: ${BASE_HOST_NAME:-$HOSTNAME}
     restart: always
     pull_policy: always
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
-      JWT_SECRET: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
-      DATABASE_URL: postgresql://${DB_ADMIN_NAME:-postgres}:${DB_ADMIN_PASS:-changeme_admin_password}@corecontrol-db:5432/${DB_CREATE_DATABASE_NAME:-corecontrol}
+      PORT: 3000
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-replace-with-a-random-32-byte-hex-string}
+      ADMIN_USERNAME: ${APP_ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${APP_ADMIN_PASS:-replace-with-a-random-password}
       CONTAINER_NAME: corecontrol-app
       HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     ports:
-      - '172.17.0.1:59022:3000'
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3000 || exit 1']
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 90s
-    depends_on:
-      db:
-        condition: service_healthy
-      agent:
-        condition: service_started
+      - '172.17.0.1:64144:3000'
+    volumes:
+      - './volumes/data/corecontrol:/app/data'
     networks:
       - corecontrol
-      - proxy
-      - cloudflare
-    labels:
-      - 'traefik.enable=true'
-      - 'cloudflare.enable=true'
-      - 'traefik.docker.network=proxy'
-      - 'cloudflare.service=http://corecontrol-app:3000'
-      - 'cloudflare.hostname=corecontrol.${CLOUDFLARE_ZONE_NAME:-}'
-      - 'traefik.http.routers.corecontrol-app.entrypoints=http'
-      - 'traefik.http.routers.corecontrol-app-secure.tls=true'
-      - 'traefik.http.routers.corecontrol-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
-      - 'traefik.http.middlewares.corecontrol-app-https-redirect.redirectscheme.scheme=https'
-      - 'traefik.http.routers.corecontrol-app.middlewares=corecontrol-app-https-redirect'
-      - 'traefik.http.routers.corecontrol-app-secure.entrypoints=https'
-      - 'traefik.http.routers.corecontrol-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
-      - 'traefik.http.routers.corecontrol-app-secure.tls.certresolver=cloudflare'
-      - 'traefik.http.routers.corecontrol-app-secure.service=corecontrol-app'
-      - 'traefik.http.services.corecontrol-app.loadbalancer.server.port=3000'
 
   agent:
     image: haedlessdev/corecontrol-agent:latest
     container_name: corecontrol-agent
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
     hostname: corecontrol-agent
     restart: always
     pull_policy: always
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
-      DATABASE_URL: postgresql://${DB_ADMIN_NAME:-postgres}:${DB_ADMIN_PASS:-changeme_admin_password}@corecontrol-db:5432/${DB_CREATE_DATABASE_NAME:-corecontrol}
+      CORECONTROL_URL: http://corecontrol-app:3000
       CONTAINER_NAME: corecontrol-agent
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - corecontrol
-
-  db:
-    image: postgres:latest
-    container_name: corecontrol-db
-    hostname: corecontrol-db
-    restart: always
-    pull_policy: always
-    logging: *default-logging
-    environment:
-      TZ: ${TZ:-America/New_York}
-      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-corecontrol}
-      POSTGRES_USER: ${DB_ADMIN_NAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
-      CONTAINER_NAME: corecontrol-db
-    volumes:
-      - './volumes/data/db/postgres/corecontrol:/var/lib/postgresql/data:rw'
-    healthcheck:
-      test: ['CMD', 'pg_isready', '-q', '-U', '${DB_ADMIN_NAME:-postgres}', '-d', '${DB_CREATE_DATABASE_NAME:-corecontrol}']
-      timeout: 45s
-      interval: 10s
-      retries: 10
     networks:
       - corecontrol
 
@@ -99,7 +50,3 @@ networks:
   corecontrol:
     name: corecontrol
     external: false
-  proxy:
-    external: true
-  cloudflare:
-    external: true
